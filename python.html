@@ -7,12 +7,156 @@
   <script>hljs.initHighlightingOnLoad();</script>
 </head>
 <body>
-  <pre><code class="python">def fib(n):
-  a, b = 0, 1
-    while a < n:
-      print(a, end=' ')
-      a, b = b, a+b
-      print()
-  fib(1000)</code></pre>
+  <pre><code class="python">
+    import tkinter as tk # imports tkinter as tk
+import random # imports random
+# Initialize window width
+WIDTH = 600
+# Initialize window height
+HEIGHT = 400
+# Initialize Player_speed
+PLAYER_SPEED = 30
+# Intial Code: "BULLET_SPEED = 15"
+#CHANGE: BULLET_SPEED = 50
+# Initialize bullet speed
+BULLET_SPEED = 50
+# Initialize Initial enemy speed
+INITIAL_ENEMY_SPEED = 2
+# Initialize level increment - how much difficult the game becomes each level
+LEVEL_INCREMENT = 1.5
+# Initialize Enemy count increment - how much the enemy count increases each level
+ENEMY_COUNT_INCREMENT = 2
+
+# Initialize main window
+root = tk.Tk() # initialize window
+root.title("Space Invaders") # initialize title for window
+
+# Canvas setup
+canvas = tk.Canvas(root, width=WIDTH,  height=HEIGHT, bg="black") # Creating canvas in variable
+canvas.pack() # Initialize canvas 
+
+# Playter setup
+player = canvas.create_rectangle(280, 370, 320, 390, fill="blue") # player creation
+player_position = WIDTH / 2 # player x pos 
+
+# Bullet setup
+bullet = None # bullet boolean created/not created
+
+# Game States
+score = 0 # Game Score
+level = 1 # Game level
+enemies = [] # Amount of enemies
+
+# Score and text display
+score_text = canvas.create_text(500,20,text=f"Score: {score}", fill="white", font=("Courier", 14)) # Score display (creates a score text that displays score with white fill and font Courier size=14)
+level_text = canvas.create_text(550,200, text=f"Level: {level}", fill="white", font=("Courier", 14)) # level display (creates a level text that displays score with white fill and font Courier size=14)
+# level creation function 
+def start_level():
+    # Initialize enemies for the current level
+    global enemies # declaring main enemies variable to be accessible through the function
+    enemy_speed = INITIAL_ENEMY_SPEED * LEVEL_INCREMENT * (level - 1) # Declaring enemey speed: will increase every level
+    enemy_count = 5 + ENEMY_COUNT_INCREMENT * (level - 1) # Declaring how many eneimes there will be from each level: will increase after each level
+    
+    # Clear Previous enemies
+    for enemy in enemies: #  For loop for locating how many enemies there are 
+        canvas.delete(enemy) # Deleting enemies from canvas
+    enemies.clear() # Clearing entire array from the enemies so new enemies can be initialized 
+
+    # initialize new enemies
+    for _ in range(enemy_count): # Inspecting how many enemies need to be initialized by examining the enemy_count variable, (For loop)and repeat the code below to create a new enemy depending on thhe number that was set in the **enemy_count** varaible
+        x_position = random.randint(0, WIDTH - 40) # Initialize the x position where the enemies need to be constructed
+        enemy = canvas.create_rectangle(x_position, 50, x_position + 40, 70, fill="red") # Initialize enemy color
+        enemies.append((enemy, x_position, enemy_speed)) # Appeding the new enemy created to the enemies array
+
+
+# Initialize Player movement
+def move_player(event):
+    global player_position # Initialize player_position varaible to be accessible through the function
+    if event.keysym == "Left" and player_position > 0: # Scan for "Left" key and confirming that player_position is not 0
+        player_position -= PLAYER_SPEED # Increasing player_speed to be to the left
+    elif event.keysym == "Right" and player_position < WIDTH - 40: # Scan for "Left" key and  confirming that player_postion is greater than WIDTH - 40
+        player_position += PLAYER_SPEED # Increasing player_speed to be to the right
+    canvas.coords(player, player_position, 370, player_position + 40, 390) # Sets coords for player 
+
+
+# Initializing and firing bullet function
+def fire_bullet(event):
+    global bullet # Declaring bullet to be accessible through the function
+    if bullet is None: # Check if bullet = None (Bullet had yet to be created)
+        bullet_x = canvas.coords(player)[0] + 15 # Set bullet x position
+        bullet_y = canvas.coords(player)[1] # Set bullet y position
+        bullet = canvas.create_rectangle(bullet_x, bullet_y, bullet_x + 10, bullet_y - 20, fill="yellow") # Create bullet onto canvas
+
+
+# Deleting bullet if off screen or in contact with enemies
+def move_bullet():
+    global bullet, score # Declaring bullet and score to be accessible through the function
+    if bullet is not None: # Check if bullet is not None (Bullet has been created)
+        canvas.move(bullet, 0, -BULLET_SPEED) # Moving the bullet upwards
+        bullet_pos = canvas.coords(bullet) # Set bullet position
+
+        #Check if bullet is off-screen
+        if bullet_pos[1] < 0: 
+            canvas.delete(bullet) # Delete bullet
+            bullet = None # Set bullet variable to None
+        else:
+            # Check for collisions with enemies
+            for enemy, x_position, speed in enemies: # For loop to check with every enemy created  
+                enemy_pos = canvas.coords(enemy) # New varaible to find enemy position
+                if (bullet_pos[0] < enemy_pos[2] and bullet_pos[2] > enemy_pos[0] and bullet_pos[1] < enemy_pos[3] and bullet_pos[3] > enemy_pos[1]): # Checks colision with each side of the enemy and bullet collison (Checks if bottom/top/right/left side of bullet collide with bottom/top/right/left side of enemy)
+                    # Collision detected
+                    canvas.delete(enemy) # deletes enemy from canvas
+                    enemies.remove((enemy, x_position, speed)) # Removes enemy and it's attributes from enemy array
+                    canvas.delete(bullet) # Deletes bullet from canvas
+                    bullet = None # Sets bullet to None (Not created)
+                    score += 10 # Increases score
+                    canvas.itemconfig(score_text, text=f"Score: {score}") # Configures and updates score text
+                    break # Finish function
+
+
+# Configuration for eneimes
+def move_enemies():
+    global level # Declaring varaible to be accessible through the function
+    for i, (enemy, x_position, speed) in enumerate(enemies): # For loop that goes through each enemy and it's attributes and alos figures out their position in the array
+        canvas.move(enemy, speed, 0) # sets the canvas to move the enemies only horizontally
+        x_position += speed # Adds speed to x_position
+
+        # Change direciton if an enemy hits the canvas border
+        if x_position > WIDTH - 40 or x_position < 0: # Checks if enemy x position is greater than window width - 40 or greater than 0
+            speed *= -1  # Sets speed to it's opposite side (If speed was set moving left (positive) it would move right (negative) and vice versa)
+            canvas.move(enemy, 0, 20) # moves enemy down when it hits the edge screen 
+
+        enemies[i] = (enemy, x_position, speed) # updates information in the enemy array
+
+        # Check if enemy reaches the player (Game over)
+        player_pos = canvas.coords(player) # finds player pos and stores it in variable
+        enemy_pos = canvas.coords(enemy) # finds enemy pos and stores it in variable 
+        if (player_pos[0] < enemy_pos[2] and player_pos[2] > enemy_pos[0] and player_pos[1] < enemy_pos[3] and player_pos[3] > enemy_pos[1]):  # Checks colision with each side of the enemy and bullet collison (Checks if bottom/top/right/left side of player collide with bottom/top/right/left side of enemy)
+            canvas.create_text(WIDTH / 2, HEIGHT / 2, text="GAME OVER", fill="white", font=("Courier", 24)) # Creates text GAME OVER in white and font Courier, size=24
+            return False # returns with false
+    # Level UP if eneimes are defeated
+    if not enemies: 
+        level += 1 # Increases level
+        canvas.itemconfig(level_text, text=f"Level: {level}")# Configures and updates level text
+        start_level() # New level
+
+    return True # returns with true
+
+def game_loop(): # Game loop; creates and updates game
+    move_bullet()# Declares function move_bullet
+    if move_enemies(): # Checks if move_enemies gives a return true or false
+        root.after(50, game_loop) # if true repeats game loop function 
+
+# Key bindings
+
+root.bind("<Left>", move_player) # key binding "LEFT" (MOVES PLAYER) 
+root.bind("<Right>", move_player)# key binding "RIGHT" (MOVES PLAYER)
+root.bind("<space>", fire_bullet)# key binding "SPACE" (CREATE AND FIRE BULLET)
+
+# Start game
+start_level() # Startes levels
+game_loop() # starts game loop
+root.mainloop() # configures and startes main loop (tkinter)
+      </code></pre>
 </body>
 </html>
